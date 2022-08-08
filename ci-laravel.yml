@@ -1,0 +1,64 @@
+name: Laravel Release
+
+on:
+  push:
+    branches:
+      - production
+      - stagging
+
+jobs:
+  release_production:
+    name: Release web to production
+    if: startsWith(github.event.head_commit.message, 'release-production:')
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v1
+      
+      - name: Deploy to production with SSH
+        uses: appleboy/ssh-action@master
+        with:
+          host: ${{ secrets.PRODUCTION_SSH_HOST }}
+          username: ${{ secrets.PRODUCTION_SSH_USERNAME }}
+          password: ${{ secrets.PRODUCTION_PASSWORD }}
+          script_stop: true
+          port: 22
+          script: |
+            cd ##directory server##
+            sudo git stash
+            sudo git pull
+            sudo git stash drop
+            sudo composer install --ignore-platform-req=ext-zip
+            sudo npm install
+            sudo npm run dev
+            sudo /usr/local/lsws/bin/lswsctrl reload
+            
+  release_stagging:
+    name: Release web to stagging
+    if: startsWith(github.event.head_commit.message, 'release-stagging:')
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v1
+      
+      - name: Deploy to production with SSH
+        uses: appleboy/ssh-action@master
+        with:
+          host: ${{ secrets.STAGGING_SSH_HOST }}
+          username: ${{ secrets.STAGGING_SSH_USERNAME }}
+          key: ${{ secrets.STAGGING_SSH_PRIVATE_KEY }}
+          script_stop: true
+          port: 22
+          script: |
+            screenfetch
+            sudo su -
+            cd ##directory server##
+            git checkout stagging
+            git reset --hard HEAD
+            git pull origin
+            composer install --ignore-platform-req=ext-zip
+            npm install
+            npm run dev
+            sudo /usr/local/lsws/bin/lswsctrl reload
